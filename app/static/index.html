@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collect - News & Rumors Finanziari</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#10b981',
+                            600: '#059669',
+                            900: '#064e3b',
+                        },
+                        darkbg: '#0B0F19',
+                        darkcard: '#111827',
+                        darkborder: '#1F2937'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 bg-darkcard/90 backdrop-blur-md border-b border-darkborder shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-md shadow-emerald-500/20">
+                    <i data-lucide="radio" class="w-5 h-5 text-black stroke-[2.5]"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-extrabold text-xl tracking-tight text-white">COLLECT</span>
+                        <span class="px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Live Radar</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Scraper & Traduttore News & Rumors Borsa Italiana e USA</p>
+                </div>
+            </div>
+
+            <!-- Header Controls & Status -->
+            <div class="flex items-center space-x-3">
+                <!-- Crawler status badge -->
+                <div id="crawlerStatusBadge" class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-xs">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span id="crawlerPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span id="crawlerDot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span id="crawlerStatusText" class="text-slate-300">Crawler attivo</span>
+                </div>
+
+                <!-- Manual Crawl Button -->
+                <button id="btnManualCrawl" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs sm:text-sm transition-all shadow-md shadow-emerald-600/30 hover:scale-[1.02] active:scale-[0.98]">
+                    <i data-lucide="refresh-cw" id="refreshIcon" class="w-4 h-4"></i>
+                    <span>Aggiorna Ora</span>
+                </button>
+
+                <!-- Add Ticker Button -->
+                <button id="btnOpenAddModal" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-medium text-xs sm:text-sm transition-all">
+                    <i data-lucide="plus" class="w-4 h-4 text-emerald-400"></i>
+                    <span>Aggiungi Titolo</span>
+                </button>
+
+                <!-- Settings / Logs Button -->
+                <button id="btnOpenSettingsModal" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all" title="Impostazioni & Titoli">
+                    <i data-lucide="sliders" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+        <!-- Metrics Overview -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-darkcard p-4 rounded-xl border border-darkborder shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-400">Totale Notizie</p>
+                    <h3 id="statTotalNews" class="text-2xl font-bold text-white mt-1">-</h3>
+                </div>
+                <div class="p-3 bg-blue-500/10 text-blue-400 rounded-lg">
+                    <i data-lucide="newspaper" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <div class="bg-darkcard p-4 rounded-xl border border-darkborder shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-amber-400">Rumors & Indiscrezioni</p>
+                    <h3 id="statTotalRumors" class="text-2xl font-bold text-amber-400 mt-1">-</h3>
+                </div>
+                <div class="p-3 bg-amber-500/10 text-amber-400 rounded-lg">
+                    <i data-lucide="flame" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <div class="bg-darkcard p-4 rounded-xl border border-darkborder shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-400">Sentiment Mercato</p>
+                    <div id="statSentimentBreakdown" class="text-xs font-medium text-slate-300 mt-1 flex items-center space-x-2">
+                        <span class="text-emerald-400" id="statPos">0+</span>
+                        <span class="text-slate-500">|</span>
+                        <span class="text-rose-400" id="statNeg">0-</span>
+                        <span class="text-slate-500">|</span>
+                        <span class="text-slate-400" id="statNeu">0=</span>
+                    </div>
+                </div>
+                <div class="p-3 bg-purple-500/10 text-purple-400 rounded-lg">
+                    <i data-lucide="trending-up" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <div class="bg-darkcard p-4 rounded-xl border border-darkborder shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-400">Titoli Sotto Osservazione</p>
+                    <h3 id="statActiveTickers" class="text-2xl font-bold text-emerald-400 mt-1">-</h3>
+                </div>
+                <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                    <i data-lucide="briefcase" class="w-5 h-5"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter and Search Controls -->
+        <div class="bg-darkcard p-4 rounded-xl border border-darkborder shadow-md space-y-4">
+            <!-- Tickers Horizontal Scroll/Pills -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs uppercase font-semibold tracking-wider text-slate-400 flex items-center space-x-1.5">
+                        <i data-lucide="target" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        <span>Filtra per Titolo Azionario:</span>
+                    </span>
+                    <span class="text-xs text-slate-500" id="activeFilterLabel">Mostrati tutti</span>
+                </div>
+                <div id="tickerPillsContainer" class="flex flex-wrap gap-2">
+                    <!-- Dynamic Ticker Pills loaded by JS -->
+                </div>
+            </div>
+
+            <hr class="border-darkborder">
+
+            <!-- Secondary Filters & Search Bar -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <!-- Search Input -->
+                <div class="md:col-span-5 relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="Cerca notizia, rumor, parola chiave o fonte..." class="w-full bg-slate-900 border border-darkborder rounded-lg pl-10 pr-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors">
+                </div>
+
+                <!-- Type Filter -->
+                <div class="md:col-span-3">
+                    <select id="typeFilter" class="w-full bg-slate-900 border border-darkborder rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                        <option value="all">Tutte le tipologie</option>
+                        <option value="rumor">🔥 Solo Rumors & Voci</option>
+                        <option value="news">📰 Solo Notizie Ufficiali</option>
+                        <option value="forum">💬 Solo Forum & Community (FOL, Investing)</option>
+                        <option value="analisi">📊 Solo Analisi & Target Price</option>
+                    </select>
+                </div>
+
+                <!-- Sentiment Filter -->
+                <div class="md:col-span-2">
+                    <select id="sentimentFilter" class="w-full bg-slate-900 border border-darkborder rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                        <option value="all">Tutti i sentiment</option>
+                        <option value="positivo">🟢 Positivo (Bullish)</option>
+                        <option value="neutro">⚪ Neutro</option>
+                        <option value="negativo">🔴 Negativo (Bearish)</option>
+                    </select>
+                </div>
+
+                <!-- Clear / Reset Filter Button -->
+                <div class="md:col-span-2 flex justify-end">
+                    <button id="btnResetFilters" class="w-full md:w-auto px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-medium transition-colors flex items-center justify-center space-x-1.5">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        <span>Reimposta</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- News Stream Header -->
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i data-lucide="clock" class="w-5 h-5 text-emerald-400"></i>
+                <h2 class="text-lg font-bold text-white tracking-tight">Flusso News & Rumors in Tempo Reale</h2>
+                <span id="streamCounter" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">0 elementi</span>
+            </div>
+            <div class="text-xs text-slate-400 flex items-center space-x-1">
+                <span>Ordinamento:</span>
+                <span class="font-semibold text-slate-200">Data e ora (più recenti prima)</span>
+            </div>
+        </div>
+
+        <!-- News Feed Container -->
+        <div id="newsFeed" class="space-y-3">
+            <!-- Loading state -->
+            <div id="feedLoading" class="py-16 text-center">
+                <i data-lucide="loader-2" class="w-8 h-8 text-emerald-400 animate-spin mx-auto mb-3"></i>
+                <p class="text-sm text-slate-400">Caricamento notizie e analisi della rete in corso...</p>
+            </div>
+        </div>
+
+        <!-- Pagination / Load More -->
+        <div id="paginationWrapper" class="text-center pt-4 pb-8 hidden">
+            <button id="btnLoadMore" class="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-sm transition-all shadow-sm">
+                Carica altre notizie
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Modal: Aggiungi Titolo -->
+    <div id="modalAddTicker" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-darkcard border border-darkborder rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <button id="btnCloseAddModal" class="absolute right-4 top-4 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                    <i data-lucide="plus-circle" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white">Monitora Nuovo Titolo</h3>
+                    <p class="text-xs text-slate-400">Aggiungi un titolo azionario italiano o americano</p>
+                </div>
+            </div>
+
+            <form id="formAddTicker" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Ticker / Simbolo</label>
+                    <input type="text" id="inputTickerSymbol" required placeholder="Es. RACE.MI, UCG.MI, AAPL, NVDA" class="w-full bg-slate-900 border border-darkborder rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 uppercase">
+                    <p class="text-[11px] text-slate-500 mt-1">Usa il suffisso <code>.MI</code> per Borsa Italiana (es. ENI.MI, RACE.MI) o il ticker secco per USA (AAPL, TSLA).</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Nome Società</label>
+                    <input type="text" id="inputTickerName" required placeholder="Es. Ferrari N.V., UniCredit, Apple Inc." class="w-full bg-slate-900 border border-darkborder rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Mercato</label>
+                    <select id="inputTickerMarket" class="w-full bg-slate-900 border border-darkborder rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+                        <option value="Borsa Italiana">Borsa Italiana (Piazza Affari - FTSE MIB)</option>
+                        <option value="US - NASDAQ">US Market (NASDAQ)</option>
+                        <option value="US - NYSE">US Market (NYSE)</option>
+                        <option value="Internazionale">Altro Mercato</option>
+                    </select>
+                </div>
+
+                <!-- Suggestions Pills -->
+                <div>
+                    <p class="text-xs text-slate-400 mb-2">Suggerimenti rapidi:</p>
+                    <div class="flex flex-wrap gap-1.5 text-xs">
+                        <button type="button" class="quick-suggest px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" data-sym="ISP.MI" data-name="Intesa Sanpaolo" data-m="Borsa Italiana">+ ISP.MI</button>
+                        <button type="button" class="quick-suggest px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" data-sym="STLAM.MI" data-name="Stellantis N.V." data-m="Borsa Italiana">+ Stellantis</button>
+                        <button type="button" class="quick-suggest px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" data-sym="MSFT" data-name="Microsoft Corporation" data-m="US - NASDAQ">+ MSFT</button>
+                        <button type="button" class="quick-suggest px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" data-sym="AMZN" data-name="Amazon.com Inc." data-m="US - NASDAQ">+ AMZN</button>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-3">
+                    <button type="button" id="btnCancelAddTicker" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm">Annulla</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center space-x-2">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Aggiungi e Scansiona</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Impostazioni & Titoli Gestione -->
+    <div id="modalSettings" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-darkcard border border-darkborder rounded-2xl w-full max-w-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button id="btnCloseSettingsModal" class="absolute right-4 top-4 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <div class="flex items-center space-x-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                    <i data-lucide="sliders" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white">Configurazione Crawler & Titoli</h3>
+                    <p class="text-xs text-slate-400">Gestisci i parametri di scansione continua e i titoli monitorati</p>
+                </div>
+            </div>
+
+            <!-- Crawler Settings Section -->
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-darkborder mb-6 space-y-4">
+                <h4 class="text-sm font-semibold text-slate-200 flex items-center space-x-2">
+                    <i data-lucide="cpu" class="w-4 h-4 text-emerald-400"></i>
+                    <span>Parametri Motore di Ricerca Automatico</span>
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Intervallo Scansione Continua (minuti)</label>
+                        <input type="number" id="settingIntervalInput" min="1" max="1440" class="w-full bg-slate-900 border border-darkborder rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="flex items-center space-x-3 pt-5">
+                        <input type="checkbox" id="settingAutoCrawlCheckbox" class="w-4 h-4 text-emerald-500 rounded border-darkborder bg-slate-900 focus:ring-emerald-500">
+                        <label for="settingAutoCrawlCheckbox" class="text-sm text-slate-300">Abilita scansione periodica automatica</label>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button id="btnSaveSettings" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors">
+                        Salva Impostazioni
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tickers Management Table -->
+            <div class="space-y-3 mb-6">
+                <h4 class="text-sm font-semibold text-slate-200 flex items-center space-x-2">
+                    <i data-lucide="list" class="w-4 h-4 text-blue-400"></i>
+                    <span>Titoli Attivi nel Database</span>
+                </h4>
+                <div class="overflow-x-auto border border-darkborder rounded-xl">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-900/80 text-slate-400 border-b border-darkborder">
+                            <tr>
+                                <th class="p-3">Simbolo</th>
+                                <th class="p-3">Nome Società</th>
+                                <th class="p-3">Mercato</th>
+                                <th class="p-3">Ultima Scansione</th>
+                                <th class="p-3 text-right">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tickersTableBody" class="divide-y divide-darkborder">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Crawl Logs -->
+            <div class="space-y-3">
+                <h4 class="text-sm font-semibold text-slate-200 flex items-center space-x-2">
+                    <i data-lucide="terminal" class="w-4 h-4 text-amber-400"></i>
+                    <span>Registro Ultimi Eventi Crawler</span>
+                </h4>
+                <div id="crawlLogsContainer" class="bg-slate-950 p-3 rounded-xl border border-darkborder text-[11px] font-mono text-slate-300 max-h-40 overflow-y-auto space-y-1">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App JavaScript -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
