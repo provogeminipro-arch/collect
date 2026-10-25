@@ -144,7 +144,7 @@ async def index_view(
 
     stats = get_stats()
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "index.html",
         {
             "request": request,
@@ -156,6 +156,11 @@ async def index_view(
             "stats": stats
         }
     )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 
 
 @app.get("/api/news")
