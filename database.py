@@ -149,3 +149,19 @@ def get_stats() -> Dict[str, Any]:
             "total_rumors": total_rumors,
             "tickers_count": len(tickers)
         }
+
+
+def delete_ticker(ticker: str) -> int:
+    clean_ticker = ticker.strip().upper()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM news_items WHERE ticker = ?", (clean_ticker,))
+        return cursor.rowcount
+
+
+def delete_item(item_id: int) -> bool:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM news_items WHERE id = ?", (item_id,))
+        return cursor.rowcount > 0
+

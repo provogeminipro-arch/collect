@@ -8,7 +8,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from database import init_db, insert_item, get_items, get_active_tickers, get_stats
+from database import (
+    init_db, insert_item, get_items, get_active_tickers,
+    get_stats, delete_ticker, delete_item
+)
 from translator import translate_text
 from scrapers.news_engine import fetch_official_news
 from scrapers.forum_engine import fetch_forum_and_rumors
@@ -171,6 +174,23 @@ async def api_trigger_scrape(ticker: str):
     clean = ticker.strip().upper()
     asyncio.create_task(scrape_ticker_task(clean))
     return {"status": "started", "ticker": clean}
+
+
+@app.post("/api/tickers/delete")
+@app.delete("/api/tickers/{ticker}")
+async def api_delete_ticker(ticker: str):
+    clean = ticker.strip().upper()
+    deleted_count = delete_ticker(clean)
+    remaining = get_active_tickers()
+    next_ticker = remaining[0] if remaining else "NVDA"
+    return {"deleted": True, "ticker": clean, "deleted_count": deleted_count, "next_ticker": next_ticker}
+
+
+@app.post("/api/items/{item_id}/delete")
+@app.delete("/api/items/{item_id}")
+async def api_delete_item(item_id: int):
+    success = delete_item(item_id)
+    return {"deleted": success, "id": item_id}
 
 
 if __name__ == "__main__":

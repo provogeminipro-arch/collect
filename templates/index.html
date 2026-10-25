@@ -102,14 +102,19 @@
             </div>
         </div>
 
-        <!-- Ticker Horizontal Scroller (One-click switch) -->
+        <!-- Ticker Horizontal Scroller (One-click switch & delete) -->
         <div class="bg-darkcard/40 border-t border-darkborder/40 px-3 sm:px-6 py-1.5 overflow-x-auto whitespace-nowrap flex items-center gap-1.5 max-w-6xl mx-auto scrollbar-none">
             <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mr-1">WATCHLIST:</span>
             {% for t in active_tickers %}
-            <a href="/?ticker={{ t }}" class="px-2.5 py-0.5 rounded-md text-xs font-bold transition-all border inline-flex items-center space-x-1 {% if t == current_ticker %}bg-emerald-500/15 text-emerald-300 border-emerald-500/40{% else %}bg-darkcard text-slate-400 hover:text-slate-200 border-darkborder/80{% endif %}">
-                <span>{% if t.endswith('.MI') %}🇮🇹{% else %}🇺🇸{% endif %}</span>
-                <span>{{ t }}</span>
-            </a>
+            <div class="inline-flex items-center rounded-md border text-xs font-bold transition-all {% if t == current_ticker %}bg-emerald-500/15 text-emerald-300 border-emerald-500/40{% else %}bg-darkcard text-slate-400 hover:text-slate-200 border-darkborder/80{% endif %}">
+                <a href="/?ticker={{ t }}" class="px-2 py-0.5 inline-flex items-center space-x-1">
+                    <span>{% if t.endswith('.MI') %}🇮🇹{% else %}🇺🇸{% endif %}</span>
+                    <span>{{ t }}</span>
+                </a>
+                <button type="button" onclick="confirmDeleteTicker('{{ t }}')" class="pr-1.5 pl-0.5 text-slate-500 hover:text-rose-400 transition-colors" title="Rimuovi {{ t }} dalla watchlist">
+                    <i data-lucide="x" class="w-3 h-3"></i>
+                </button>
+            </div>
             {% endfor %}
         </div>
     </header>
@@ -134,7 +139,7 @@
                 </div>
             </div>
 
-            <!-- Signal Stats Pills -->
+            <!-- Signal Stats Pills & Delete Ticker Button -->
             <div class="flex items-center space-x-2 text-xs font-mono">
                 <div class="px-2.5 py-1 rounded-lg bg-darkbg border border-darkborder">
                     <span class="text-slate-500">TOT:</span>
@@ -148,8 +153,15 @@
                     <span>📰 NEWS:</span>
                     <strong class="ml-1">{{ items|selectattr("category", "equalto", "NEWS")|list|length }}</strong>
                 </div>
+
+                <!-- Tasto Elimina Titolo Corrente -->
+                <button type="button" onclick="confirmDeleteTicker('{{ current_ticker }}')" class="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition-all flex items-center space-x-1" title="Elimina {{ current_ticker }} e tutte le sue notizie">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    <span class="hidden sm:inline">Elimina Titolo</span>
+                </button>
             </div>
         </div>
+
 
         <!-- Filter & Search Toolbar (No Fluff) -->
         <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1">
@@ -182,7 +194,7 @@
         <div class="space-y-2.5" id="newsFeedList">
             {% if items %}
                 {% for item in items %}
-                <article class="feed-card bg-darkcard border border-darkborder rounded-xl p-3.5 sm:p-4 space-y-2.5" data-category="{{ item.category }}" data-search="{{ (item.title_it ~ ' ' ~ item.title_original ~ ' ' ~ item.source)|lower }}">
+                <article class="feed-card bg-darkcard border border-darkborder rounded-xl p-3.5 sm:p-4 space-y-2.5" data-item-id="{{ item.id }}" data-category="{{ item.category }}" data-search="{{ (item.title_it ~ ' ' ~ item.title_original ~ ' ' ~ item.source)|lower }}">
                     
                     <!-- Row 1: Badges, Source & Time -->
                     <div class="flex items-center justify-between text-xs gap-2">
@@ -233,7 +245,7 @@
                     <div class="pt-1.5 border-t border-darkborder/50 flex items-center justify-between text-xs text-slate-400">
                         <!-- Toggle original text -->
                         {% if item.title_original and item.title_original != item.title_it %}
-                        <button onclick="toggleOriginal('orig-{{ item.id }}')" class="hover:text-slate-200 transition-colors flex items-center space-x-1 text-[11px]">
+                        <button type="button" onclick="toggleOriginal('orig-{{ item.id }}')" class="hover:text-slate-200 transition-colors flex items-center space-x-1 text-[11px]">
                             <i data-lucide="languages" class="w-3 h-3"></i>
                             <span id="label-orig-{{ item.id }}">Originale</span>
                         </button>
@@ -241,12 +253,19 @@
                         <span></span>
                         {% endif %}
 
-                        <!-- Direct Link -->
-                        <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:text-emerald-300 font-bold flex items-center space-x-1 hover:underline text-[11px]">
-                            <span>Apri fonte</span>
-                            <i data-lucide="external-link" class="w-3 h-3"></i>
-                        </a>
+                        <!-- Actions: Delete single item & Open source -->
+                        <div class="flex items-center space-x-3">
+                            <button type="button" onclick="deleteSingleItem('{{ item.id }}')" class="hover:text-rose-400 text-slate-500 transition-colors flex items-center space-x-1 text-[11px]" title="Elimina questa notizia">
+                                <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                <span>Rimuovi</span>
+                            </button>
+                            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:text-emerald-300 font-bold flex items-center space-x-1 hover:underline text-[11px]">
+                                <span>Apri fonte</span>
+                                <i data-lucide="external-link" class="w-3 h-3"></i>
+                            </a>
+                        </div>
                     </div>
+
 
                     <!-- Expandable Original Text Box -->
                     {% if item.title_original and item.title_original != item.title_it %}
@@ -354,6 +373,43 @@
                 window.location.reload();
             }
         }, 1000);
+
+        // Delete Ticker
+
+        async function confirmDeleteTicker(ticker) {
+            if (!confirm(`Vuoi davvero eliminare il titolo ${ticker} e tutte le sue notizie?`)) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/tickers/${encodeURIComponent(ticker)}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.deleted) {
+                    window.location.href = `/?ticker=${data.next_ticker || 'NVDA'}`;
+                }
+            } catch (err) {
+                alert('Errore durante la cancellazione: ' + err);
+            }
+        }
+
+        // Delete Single Item
+        async function deleteSingleItem(itemId) {
+            if (!confirm('Rimuovere questa notizia dalla lista?')) return;
+            try {
+                const res = await fetch(`/api/items/${itemId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    const card = document.querySelector(`[data-item-id="${itemId}"]`);
+                    if (card) {
+                        card.style.transition = 'opacity 0.2s, transform 0.2s';
+                        card.style.opacity = '0';
+                        card.style.transform = 'scale(0.95)';
+                        setTimeout(() => card.remove(), 200);
+                    }
+                }
+            } catch (err) {
+                console.error('Delete item error:', err);
+            }
+        }
     </script>
+
 </body>
 </html>

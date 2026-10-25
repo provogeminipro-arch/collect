@@ -1,38 +1,60 @@
 import re
+import urllib.parse
 import logging
 from typing import Dict
+from curl_cffi import requests
 from deep_translator import GoogleTranslator, MyMemoryTranslator
 
 logger = logging.getLogger(__name__)
 
-# In-memory translation cache to optimize speed and API calls
+# In-memory translation cache
 _CACHE: Dict[str, str] = {}
 
-ITALIAN_INDICATORS = {
-    "il", "lo", "la", "i", "gli", "le", "un", "una", "uno",
-    "di", "a", "da", "in", "con", "su", "per", "tra", "fra",
-    "del", "dello", "della", "dei", "degli", "delle",
-    "è", "sono", "ha", "hanno", "titolo", "azioni", "borsa",
-    "trimestrale", "utili", "ricavi", "società", "mercato",
-    "prezzo", "notizie", "oggi", "quotazioni", "sale", "scende"
+# Strong Italian indicators (words that DO NOT exist in English)
+DISTINCT_ITALIAN_WORDS = {
+    "delle", "degli", "della", "dello", "degli", "sono",
+    "nella", "nelle", "nello", "nei", "agli", "alle", "allo",
+    "perché", "perche", "perche'", "trimestrale", "utili", "ricavi",
+    "società", "societa", "quotazione", "quotazioni", "rialzo", "ribasso",
+    "borsa", "piazza", "affari", "chiusura", "fatturato", "cedola",
+    "dividendi", "dividendo", "governo", "titolo", "notizie"
+}
+
+# Strong English indicators
+ENGLISH_WORDS = {
+    "the", "is", "are", "was", "were", "this", "that", "with",
+    "from", "for", "stock", "stocks", "shares", "buy", "sell",
+    "why", "what", "how", "after", "before", "earnings", "market",
+    "markets", "quarter", "report", "reports", "growth", "revenue",
+    "price", "target", "analyst", "analysts", "investors", "wall",
+    "street", "new", "will", "could", "may", "here", "today",
+    "billion", "million", "shares", "dividend", "yield", "rate"
 }
 
 
-def is_italian(text: str) -> bool:
+def is_already_italian(text: str) -> bool:
     if not text:
         return True
-    tokens = re.findall(r"\b[a-zA-ZàèéìòùÀÈÉÌÒÙ]+\b", text.lower())
+    tokens = set(re.findall(r"\b[a-zA-ZàèéìòùÀÈÉÌÒÙ']+\b", text.lower()))
     if not tokens:
         return True
-    matches = sum(1 for t in tokens if t in ITALIAN_INDICATORS)
-    # If >= 10% of tokens are Italian indicators, assume Italian
-    return (matches / max(len(tokens), 1)) >= 0.10
+
+    # If any strong English words appear, it is NOT Italian!
+    if tokens & ENGLISH_WORDS:
+        return False
+
+    # If it contains distinctive Italian words
+    if tokens & DISTINCT_ITALIAN_WORDS:
+        return True
+
+    # Default: if unsure, do not assume Italian, let the translator handle it
+    return False
 
 
 def translate_text(text: str) -> str:
     """
-    Translates text to Italian using deep-translator (GoogleTranslator).
-    Includes in-memory cache and resilient fallback if Google blocks requests.
+    Translates text to Italian using Google Translate (gtx via curl_cffi & deep-translator).
+    Always ensures English and foreign headlines are translated into Italian.
     """
     if not text or not text.strip():
         return ""
@@ -42,30 +64,43 @@ def translate_text(text: str) -> str:
     if cleaned in _CACHE:
         return _CACHE[cleaned]
 
-    if is_italian(cleaned):
+    if is_already_italian(cleaned):
         _CACHE[cleaned] = cleaned
         return cleaned
 
-    # Truncate to reasonable snippet if very long
+    # Truncate to reasonable size
     snippet = cleaned[:500]
 
-    # Primary method: GoogleTranslator from deep-translator as specified
+    # Provider 1: Direct Google gtx via curl_cffi (Fastest, zero captcha, no 429)
+    try:
+        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=it&dt=t&q={urllib.parse.quote(snippet)}"
+        res = requests.get(url, impersonate="chrome120", timeout=6)
+        if res.status_code == 200:
+            data = res.json()
+            translated = "".join([part[0] for part in data[0] if part and part[0]])
+            if translated and translated.strip():
+                _CACHE[cleaned] = translated.strip()
+                return translated.strip()
+    except Exception as e:
+        logger.debug(f"Direct gtx translation error: {e}")
+
+    # Provider 2: deep-translator GoogleTranslator
     try:
         translated = GoogleTranslator(source="auto", target="it").translate(snippet)
         if translated and translated.strip():
             _CACHE[cleaned] = translated.strip()
             return translated.strip()
     except Exception as e:
-        logger.debug(f"GoogleTranslator primary error ({e}), trying fallback provider...")
+        logger.debug(f"deep_translator GoogleTranslator error: {e}")
 
-    # Secondary fallback: MyMemoryTranslator
+    # Provider 3: deep-translator MyMemoryTranslator
     try:
         translated = MyMemoryTranslator(source="english", target="italian").translate(snippet[:400])
         if translated and not translated.startswith("MYMEMORY WARNING:") and "INVALID" not in translated:
             _CACHE[cleaned] = translated.strip()
             return translated.strip()
     except Exception as e:
-        logger.debug(f"Fallback translation error: {e}")
+        logger.debug(f"MyMemory fallback error: {e}")
 
-    # Return original text if translation service is unavailable
+    # If all fail, return original
     return cleaned
