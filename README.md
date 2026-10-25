@@ -1,101 +1,82 @@
-# 📡 Collect - Stock News & Rumors Radar
+# 📡 Collect - Financial News & Rumors Radar
 
-**Collect** è una piattaforma autonoma progettata per scansionare continuamente la rete, i siti finanziari specializzati (Investing.it, Yahoo Finance, Milano Finanza, MarketScreener, Teleborsa) e le community/forum economici (Finanzaonline, Reddit, forum Investing), raccogliendo in tempo reale notizie, indiscrezioni (rumors) e analisi sui titoli azionari della **Borsa Italiana** (FTSE MIB) e del **mercato USA** (NASDAQ/NYSE).
+**Collect** è un'applicazione web autonoma Full-Stack Python che raccoglie in tempo reale news ufficiali e rumors di mercato su singoli titoli azionari (sia del mercato italiano - Borsa Italiana / Piazza Affari, sia dei mercati USA - NASDAQ/NYSE), scelti dinamicamente dall'utente.
 
-Tutte le notizie internazionali vengono automaticamente tradotte in **italiano** ed organizzate cronologicamente in un feed in tempo reale dotato di dashboard web con aggiornamento via WebSocket.
-
----
-
-## 🌟 Caratteristiche Principali
-
-- 🔄 **Crawler Continuo e Motore di Ricerca**: Scansione automatica e periodica in background (intervallo personalizzabile es. ogni 5-15 min) o su richiesta istantanea ("Aggiorna Ora").
-- 🇮🇹 **Traduzione Automatica in Italiano**: Tutte le notizie e i rumor in lingua straniera vengono tradotti fedelmente in italiano, preservando il testo originale consultabile con un click.
-- 🔥 **Rilevamento Rumor vs Notizie Ufficiali**: Motore di analisi testuale con classificazione automatica tra:
-  - **Rumor & Voci di Mercato** (trattative segrete, OPA, acquisizioni, fughe di notizie, delisting)
-  - **Notizie Ufficiali** (comunicati societari, trimestrali, bilanci, dividendi)
-  - **Forum & Community** (Finanzaonline, forum Investing.it, thread reddit)
-  - **Analisi & Target Price** (consensus analisti, rating, upgrade/downgrade)
-- 📊 **Analisi del Sentiment**: Classificazione automatica di ciascun articolo in *Positivo* (Bullish), *Neutro* o *Negativo* (Bearish).
-- ⚡ **Feed in Tempo Reale con WebSocket**: Nuove notizie e rumors compaiono immediatamente sulla dashboard senza bisogno di ricaricare la pagina.
-- 🎯 **Gestione Dinamica dei Titoli**: Possibilità di aggiungere e monitorare qualsiasi titolo nazionale (es. `RACE.MI`, `ENI.MI`, `UCG.MI`, `ISP.MI`, `STLAM.MI`) o americano (es. `AAPL`, `NVDA`, `TSLA`, `MSFT`, `AMZN`).
-- 🗄️ **Database SQLite WAL Integrato**: Archiviazione locale ad alte prestazioni, con deduplicazione automatica per URL e titolo.
+Tutti i contenuti raccolti in lingua straniera vengono tradotti automaticamente in **italiano** prima di essere salvati nel database SQLite con deduplicazione rigorosa e presentati in una dashboard dark-mode ordinata cronologicamente.
 
 ---
 
-## 🏗️ Architettura del Progetto
+## 🛠️ Stack Tecnologico & Architettura (Zero-Cost)
+
+- **Backend & Web Server**: Python 3.9+, [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://www.uvicorn.org/), [Jinja2](https://jinja.palletsprojects.com/).
+- **Background Worker**: [APScheduler](https://apscheduler.readthedocs.io/) integrato direttamente nel ciclo di vita (`lifespan`) di FastAPI per eseguire la scansione continua ogni 5 minuti.
+- **Database**: SQLite (`collect_news.db`) con indice `UNIQUE` su hash del titolo/URL e modalità WAL ad alte prestazioni per prevenire duplicati.
+- **Motori di Ricerca (`scrapers/`)**:
+  - `news_engine.py`: Estrazione delle notizie ufficiali tramite **yfinance** (Yahoo Finance) e **feedparser** su Google News RSS (paese/lingua IT e US).
+  - `forum_engine.py`: Estrazione di rumors e discussioni utenti da **Reddit** (r/wallstreetbets, r/stocks, r/ItaliaPersonalFinance), **FinanzaOnline Forum** e **Investing.com Forum** utilizzando **curl_cffi** (per simulare fingerprint Chrome ed evitare blocchi Cloudflare) e **BeautifulSoup4**.
+- **Traduzione Automatica**: `translator.py` basato su **deep-translator** (`GoogleTranslator`) con cache interna in-memory e fallback intelligente per tradurre automaticamente in italiano tutti i titoli e i testi esteri prima del salvataggio nel database.
+- **Frontend (`templates/index.html`)**: Dashboard reattiva dark-mode con TailwindCSS (CDN), form per cambiare al volo il Ticker (es. `NVDA`, `ENI.MI`, `RACE.MI`, `AAPL`), filtri rapidi per categoria (`TUTTI`, `SOLO NEWS`, `SOLO RUMOR/FORUM`), ricerca istantanea, badge distintivo e auto-refresh continuo.
+
+---
+
+## 📁 Struttura del Progetto
 
 ```
 collect/
-├── app/
-│   ├── config.py              # Configurazioni, percorsi, intervalli di default
-│   ├── database.py            # Schema SQLite (WAL mode), CRUD notizie, titoli e log
-│   ├── models.py              # Schemi Pydantic per validazione API
-│   ├── crawler/
-│   │   ├── collector.py       # Orchestratore scansioni multi-fonte e deduplicazione
-│   │   ├── translator.py      # Servizio di traduzione in italiano con cache
-│   │   ├── analyzer.py        # Classificatore rumor/notizia e scoring del sentiment
-│   │   ├── scheduler.py       # Daemon asincrono per scansione periodica
-│   │   └── sources/
-│   │       ├── google_news.py # Scraper RSS multi-query (notizie, rumor, forum)
-│   │       ├── yahoo_finance.py
-│   │       └── investing_it.py
-│   ├── static/
-│   │   ├── index.html         # Dashboard reattiva moderna (Tailwind CSS, Lucide)
-│   │   ├── css/styles.css     # Stili e animazioni radar
-│   │   └── js/app.js          # Controller frontend, gestione filtri e WebSocket
-│   └── main.py                # Applicazione FastAPI, API REST e endpoint WebSocket
-├── run.py                     # Entry point per avviare il server
-├── requirements.txt           # Dipendenze Python
-└── README.md
+├── .gitignore
+├── requirements.txt
+├── README.md
+├── main.py
+├── database.py
+├── translator.py
+├── scrapers/
+│   ├── __init__.py
+│   ├── news_engine.py
+│   └── forum_engine.py
+└── templates/
+    └── index.html
 ```
 
 ---
 
-## 🚀 Guida Rapida all'Avvio
+## 🚀 Avvio Rapido
 
-### 1. Prerequisiti
-- Python 3.9 o superiore.
-
-### 2. Creazione ambiente virtuale e installazione dipendenze
+### 1. Attivazione ambiente virtuale e installazione dipendenze
 
 ```bash
-# Entra nella directory del progetto
 cd /Users/giovannimancini/.gemini/antigravity/scratch/collect
 
 # Crea l'ambiente virtuale
 python3 -m venv .venv
 
-# Attiva l'ambiente virtuale
+# Attiva l'ambiente
 source .venv/bin/activate
 
-# Installa i pacchetti richiesti
+# Installa le dipendenze
 pip install -r requirements.txt
 ```
 
-### 3. Avvio della Piattaforma
+### 2. Avvio del Server
 
 ```bash
-python run.py
+python main.py
+```
+oppure con uvicorn:
+```bash
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-La dashboard sarà immediatamente accessibile nel tuo browser all'indirizzo:
+Accedi alla dashboard dal browser su:  
 👉 **[http://localhost:8000](http://localhost:8000)**
 
 ---
 
-## 💡 Utilizzo della Dashboard
+## 💡 Funzionalità della Dashboard
 
-1. **Selezione Titolo**: Clicca sui badge in alto (`TUTTI I TITOLI`, `🇮🇹 RACE.MI`, `🇮🇹 ENI.MI`, `🇺🇸 NVDA`, ecc.) per isolare le news di uno specifico asset.
-2. **Filtro Tipologia**: Seleziona `Solo Rumors & Voci`, `Solo Notizie Ufficiali`, `Solo Forum` o `Solo Analisi`.
-3. **Filtro Sentiment**: Filtra rapidamente per notizie con impatto positivo o negativo.
-4. **Ricerca Testuale**: Digita qualsiasi termine nella barra di ricerca per una ricerca full-text immediata.
-5. **Aggiunta Titolo**: Clicca su `+ Aggiungi Titolo` per inserire qualsiasi altro titolo italiano o USA; il crawler avvierà immediatamente una prima scansione per quel titolo.
-6. **Aggiornamento Forzato**: Premi `Aggiorna Ora` per lanciare istantaneamente una scansione di tutti i titoli o di quello attualmente selezionato.
-
----
-
-## 🌐 Fonti Monitorate
-- **Investing.it**: Notizie, articoli di opinione, rassegna mercati e discussioni.
-- **Finanzaonline**: Notizie e thread del forum economico più frequentato in Italia.
-- **Yahoo Finance**: Notizie istituzionali e internazionali su titoli italiani e statunitensi.
-- **Google News Finance Aggregator**: Indicizzazione in tempo reale di fonti primarie tra cui Il Sole 24 Ore, Milano Finanza, Teleborsa, MarketScreener, Reuters, Bloomberg, CNBC e Reddit (WallStreetBets / r/stocks).
+1. **Cambio Ticker Istantaneo**: Inserisci qualsiasi simbolo nel form in alto (es. `NVDA`, `TSLA`, `ENI.MI`, `RACE.MI`, `UCG.MI`) e premi *"Analizza Ticker"*.
+2. **Badge di Categoria**:
+   - `NEWS UFFICIALE`: Notizie verificate e comunicati da Yahoo Finance, Reuters, Teleborsa, Milano Finanza, ecc.
+   - `RUMOR / FORUM`: Discussioni, indiscrezioni e speculazioni da FinanzaOnline, Reddit e Investing.com.
+3. **Ordinamento Cronologico Decrescente**: I post e le notizie sono presentati in ordine temporale rigoroso dal più recente al più vecchio.
+4. **Visualizzazione Testo Originale**: Pulsante per visualizzare il testo originale pre-traduzione a fronte.
+5. **Auto-refresh**: Contatore dinamico di 30 secondi che aggiorna la schermata con i nuovi elementi scoperti dal worker di background.

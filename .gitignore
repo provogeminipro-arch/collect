@@ -1,26 +1,24 @@
-# Python
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
-env/
-.venv/
-venv/
-ENV/
 
 # Database
+collect_news.db
+collect_news.db-journal
+collect_news.db-wal
+collect_news.db-shm
 *.db
 *.sqlite3
-*.sqlite
-collect.db
 
-# Logs
+# Logs & temp
 *.log
-
-# macOS
 .DS_Store
-
-# IDE
 .idea/
 .vscode/

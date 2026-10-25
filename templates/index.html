@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collect - {{ current_ticker }} News & Rumors Radar</title>
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#090D16',
+                        darkcard: '#0F172A',
+                        darkborder: '#1E293B',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #090D16; }
+        ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    </style>
+</head>
+<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Top Header -->
+    <header class="sticky top-0 z-40 bg-darkcard/95 backdrop-blur-md border-b border-darkborder shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <i data-lucide="activity" class="w-5 h-5 text-black stroke-[2.5]"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-black text-xl tracking-wider text-white">COLLECT</span>
+                        <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Live Radar</span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Aggregatore news e rumors Borsa Italiana & USA con traduzione in italiano</p>
+                </div>
+            </div>
+
+            <!-- Auto-refresh status -->
+            <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-darkborder text-xs text-slate-300">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>Auto-refresh: <strong id="refreshTimer">30s</strong></span>
+                </div>
+                <button onclick="window.location.reload()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-darkborder text-slate-300 hover:text-white transition-colors" title="Aggiorna pagina">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+        <!-- Top Form: Ticker Switcher & Collector -->
+        <div class="bg-darkcard border border-darkborder rounded-2xl p-5 shadow-lg">
+            <form action="/" method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <div class="md:col-span-8 flex items-center relative">
+                    <div class="absolute left-3.5 text-emerald-400">
+                        <i data-lucide="crosshair" class="w-5 h-5"></i>
+                    </div>
+                    <input type="text" name="ticker" value="{{ current_ticker }}" required placeholder="Inserisci Ticker (es. NVDA, ENI.MI, RACE.MI, AAPL, UCG.MI)..." class="w-full bg-slate-900 border border-darkborder rounded-xl pl-11 pr-4 py-3 text-base font-bold tracking-wide uppercase text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all">
+                </div>
+                <div class="md:col-span-4 flex space-x-2">
+                    <button type="submit" class="w-full py-3 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm tracking-wide transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center space-x-2 active:scale-95">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                        <span>Analizza Ticker</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Quick Ticker Switch Pills -->
+            <div class="mt-4 pt-3 border-t border-darkborder/70 flex flex-wrap items-center gap-2">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">Titoli Monitorati:</span>
+                {% for t in active_tickers %}
+                <a href="/?ticker={{ t }}" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all border {% if t == current_ticker %}bg-emerald-600 text-white border-emerald-400 shadow-sm shadow-emerald-500/30{% else %}bg-slate-900 text-slate-300 hover:bg-slate-800 border-darkborder{% endif %}">
+                    {% if t.endswith('.MI') %}🇮🇹{% else %}🇺🇸{% endif %} {{ t }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Metrics Overview -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-darkcard p-4 rounded-xl border border-darkborder shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-400">Totale Raccolto per {{ current_ticker }}</p>
+                    <h3 class="text-2xl font-black text-white mt-0.5">{{ items|length }}</h3>
+                </div>
+                <div class="p-3 bg-blue-500/10 text-blue-400 rounded-xl">
+                    <i data-lucide="layers" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <div class="bg-darkcard p-4 rounded-xl border border-darkborder shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-amber-400">Rumors & Discussioni Forum</p>
+                    <h3 class="text-2xl font-black text-amber-400 mt-0.5">
+                        {{ items|selectattr("category", "equalto", "RUMOR/FORUM")|list|length }}
+                    </h3>
+                </div>
+                <div class="p-3 bg-amber-500/10 text-amber-400 rounded-xl">
+                    <i data-lucide="flame" class="w-5 h-5"></i>
+                </div>
+            </div>
+
+            <div class="bg-darkcard p-4 rounded-xl border border-darkborder shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-cyan-400">Notizie Ufficiali Verificate</p>
+                    <h3 class="text-2xl font-black text-cyan-400 mt-0.5">
+                        {{ items|selectattr("category", "equalto", "NEWS")|list|length }}
+                    </h3>
+                </div>
+                <div class="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl">
+                    <i data-lucide="newspaper" class="w-5 h-5"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters & Search Toolbar -->
+        <div class="bg-darkcard p-4 rounded-xl border border-darkborder shadow-md flex flex-col md:flex-row items-center justify-between gap-3">
+            <!-- Category Filter Buttons -->
+            <div class="flex items-center space-x-1.5 w-full md:w-auto">
+                <a href="/?ticker={{ current_ticker }}&category=ALL" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border {% if selected_category == 'ALL' %}bg-slate-700 text-white border-slate-500{% else %}bg-slate-900 text-slate-400 hover:text-white border-darkborder{% endif %}">
+                    TUTTI
+                </a>
+                <a href="/?ticker={{ current_ticker }}&category=NEWS" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center space-x-1 {% if selected_category == 'NEWS' %}bg-blue-600 text-white border-blue-400{% else %}bg-slate-900 text-blue-400 hover:bg-slate-800 border-darkborder{% endif %}">
+                    <i data-lucide="newspaper" class="w-3.5 h-3.5"></i>
+                    <span>SOLO NEWS</span>
+                </a>
+                <a href="/?ticker={{ current_ticker }}&category=RUMOR/FORUM" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center space-x-1 {% if selected_category == 'RUMOR/FORUM' %}bg-amber-600 text-white border-amber-400{% else %}bg-slate-900 text-amber-400 hover:bg-slate-800 border-darkborder{% endif %}">
+                    <i data-lucide="flame" class="w-3.5 h-3.5"></i>
+                    <span>SOLO RUMOR / FORUM</span>
+                </a>
+            </div>
+
+            <!-- In-page Search Filter -->
+            <div class="w-full md:w-72 relative">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                <input type="text" id="liveSearchInput" placeholder="Filtra notizie correnti..." class="w-full bg-slate-900 border border-darkborder rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+            </div>
+        </div>
+
+        <!-- News & Rumors List (Chronological Order) -->
+        <div class="space-y-3" id="itemsList">
+            {% if items %}
+                {% for item in items %}
+                <article class="news-item-card bg-darkcard border border-darkborder hover:border-slate-700 rounded-xl p-4 sm:p-5 shadow-sm transition-all space-y-3" data-search="{{ (item.title_it ~ ' ' ~ item.title_original ~ ' ' ~ item.source)|lower }}">
+                    <!-- Header Meta & Badges -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <!-- Category Badge -->
+                            {% if item.category == 'RUMOR/FORUM' %}
+                            <span class="px-2.5 py-1 rounded-md text-[11px] font-extrabold uppercase tracking-wide bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center space-x-1.5 shadow-sm">
+                                <i data-lucide="flame" class="w-3.5 h-3.5"></i>
+                                <span>RUMOR / FORUM</span>
+                            </span>
+                            {% else %}
+                            <span class="px-2.5 py-1 rounded-md text-[11px] font-extrabold uppercase tracking-wide bg-blue-500/15 text-cyan-300 border border-blue-500/30 flex items-center space-x-1.5 shadow-sm">
+                                <i data-lucide="newspaper" class="w-3.5 h-3.5"></i>
+                                <span>NEWS UFFICIALE</span>
+                            </span>
+                            {% endif %}
+
+                            <!-- Source Badge -->
+                            <span class="px-2.5 py-1 rounded-md bg-slate-900 text-slate-300 border border-darkborder font-semibold">
+                                {{ item.source }}
+                            </span>
+                        </div>
+
+                        <!-- Date & Time (Desc Order) -->
+                        <div class="text-slate-400 text-xs flex items-center space-x-1 font-mono">
+                            <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
+                            <span>{{ item.published_at[:16].replace('T', ' ') }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Title in Italian -->
+                    <div>
+                        <h2 class="text-base sm:text-lg font-bold text-white hover:text-emerald-400 transition-colors leading-snug">
+                            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="hover:underline">
+                                {{ item.title_it }}
+                            </a>
+                        </h2>
+                    </div>
+
+                    <!-- Content / Snippet in Italian -->
+                    {% if item.content_it and item.content_it != item.title_it %}
+                    <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                        {{ item.content_it }}
+                    </p>
+                    {% endif %}
+
+                    <!-- Footer Actions -->
+                    <div class="pt-2 border-t border-darkborder/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        {% if item.title_original and item.title_original != item.title_it %}
+                        <button onclick="toggleOriginal('orig-{{ item.id }}')" class="text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition-colors">
+                            <i data-lucide="languages" class="w-3.5 h-3.5"></i>
+                            <span>Testo originale</span>
+                        </button>
+                        {% else %}
+                        <span></span>
+                        {% endif %}
+
+                        <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center space-x-1 hover:underline">
+                            <span>Apri fonte originale</span>
+                            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                        </a>
+                    </div>
+
+                    <!-- Collapsible Original Snippet -->
+                    {% if item.title_original and item.title_original != item.title_it %}
+                    <div id="orig-{{ item.id }}" class="hidden p-3 rounded-lg bg-slate-900 border border-darkborder text-xs text-slate-400 space-y-1">
+                        <p class="font-semibold text-slate-300">Original text:</p>
+                        <p class="italic text-slate-200">{{ item.title_original }}</p>
+                        {% if item.content_original and item.content_original != item.title_original %}
+                        <p class="text-[11px] text-slate-400">{{ item.content_original }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            {% else %}
+                <div class="py-16 text-center bg-darkcard rounded-2xl border border-darkborder p-8">
+                    <div class="w-12 h-12 rounded-full bg-slate-900 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="inbox" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-white mb-1">Nessuna notizia o rumor al momento per {{ current_ticker }}</h3>
+                    <p class="text-xs text-slate-400 max-w-md mx-auto mb-4">
+                        Il background worker è attivo ed effettua scansioni ogni 5 minuti. Puoi anche forzare l'analisi dal form in alto.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+
+    </main>
+
+    <footer class="mt-auto border-t border-darkborder py-4 bg-darkcard/50 text-center text-xs text-slate-500">
+        Collect © 2026 - Aggregatore Autonomo di News & Rumors Finanziari (Zero-Cost Stack)
+    </footer>
+
+    <script>
+        // Init Lucide icons
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+
+        // Toggle original text box
+        function toggleOriginal(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.toggle('hidden');
+            }
+        }
+
+        // Live In-Page Search Filter
+        const searchInput = document.getElementById('liveSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase().trim();
+                const cards = document.querySelectorAll('.news-item-card');
+                cards.forEach(c => {
+                    const searchData = c.getAttribute('data-search') || '';
+                    if (!term || searchData.includes(term)) {
+                        c.style.display = 'block';
+                    } else {
+                        c.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // 30-Second Auto-refresh Timer
+        let countdown = 30;
+        const timerEl = document.getElementById('refreshTimer');
+        setInterval(() => {
+            countdown--;
+            if (timerEl) timerEl.textContent = countdown + 's';
+            if (countdown <= 0) {
+                window.location.reload();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
